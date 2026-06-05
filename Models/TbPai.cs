@@ -1,0 +1,15 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Projeto1_IF.Models;
+
+public partial class TbPai
+{
+    public int IdPais { get; set; }
+
+    public string? Nome { get; set; }
+
+    public string? Sigla { get; set; }
+
+    public virtual ICollection<TbEstado> TbEstados { get; set; } = new List<TbEstado>();
+}

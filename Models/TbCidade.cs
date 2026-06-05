@@ -1,0 +1,19 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Projeto1_IF.Models;
+
+public partial class TbCidade
+{
+    public int IdCidade { get; set; }
+
+    public int? IdEstado { get; set; }
+
+    public string? Nome { get; set; }
+
+    public virtual TbEstado? IdEstadoNavigation { get; set; }
+
+    public virtual ICollection<TbPaciente> TbPacientes { get; set; } = new List<TbPaciente>();
+
+    public virtual ICollection<TbProfissional> TbProfissionals { get; set; } = new List<TbProfissional>();
+}
