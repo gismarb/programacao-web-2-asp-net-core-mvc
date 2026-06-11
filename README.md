@@ -49,7 +49,7 @@ Arquivos principais criados:
 - `Views/TbSuplementos/`
 
 > Observação: conforme solicitado na atividade, meu nome (Gismar Pereira Barbosa) foi inserido acima do namespace no controller criado.
-> Acesso direto à [Controllers/TbSuplementosController.cs](Controllers/TbSuplementosController.cs)
+> Acesso direto à [Controllers/TbSuplementosController.cs](Controllers/TbSuplementosController.cs).
 
 ### Entrega 02 - Tarefa de acompanhamento 2
 
@@ -95,8 +95,8 @@ Ajustes adicionais realizados:
 - Arquivo `jquery.validate.pt-br.js` criado para adequar validações de data e número ao formato brasileiro.
 - Nome do estudante mantido como comentário no controller e no arquivo JavaScript, conforme solicitado na atividade.
 
-> Acesso direto à [Controllers/TbPacientesController.cs](Controllers/TbPacientesController.cs)
-> Acesso direto à [wwwroot/js/jquery.validate.pt-br.js](wwwroot/js/jquery.validate.pt-br.js)
+> Acesso direto à [Controllers/TbPacientesController.cs](Controllers/TbPacientesController.cs).
+> Acesso direto à [wwwroot/js/jquery.validate.pt-br.js](wwwroot/js/jquery.validate.pt-br.js).
 
 ### Entrega 03
 
