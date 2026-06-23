@@ -1,0 +1,165 @@
+@model Projeto1_IF.ViewModels.EditarMeusDadosProfissionalViewModel
+
+@{
+    ViewData["Title"] = "Editar meus dados profissionais";
+}
+
+@*
+    Gismar Pereira Barbosa
+
+    View criada para permitir que o profissional logado edite seus próprios dados.
+
+    Justificativa técnica:
+    Esta tela utiliza EditarMeusDadosProfissionalViewModel, e não o model
+    TbProfissional diretamente, para controlar quais campos podem ser editados.
+
+    O CPF é exibido apenas como informação, sem campo de edição. A gravação
+    também é protegida no Controller, que não atualiza o CPF mesmo que alguém
+    tente manipular o HTML da página.
+*@
+
+<h1>@ViewData["Title"]</h1>
+
+<p class="text-muted">
+    Atualize seus dados profissionais abaixo. O CPF não pode ser alterado após o cadastro.
+</p>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="EditarMeusDados" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <input type="hidden" asp-for="IdProfissional" />
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Dados principais</strong>
+                </div>
+
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label asp-for="Cpf" class="control-label"></label>
+                        <input asp-for="Cpf" class="form-control" readonly />
+                        <span asp-validation-for="Cpf" class="text-danger"></span>
+                        <small class="form-text text-muted">
+                            O CPF é exibido apenas para consulta e não pode ser alterado nesta tela.
+                        </small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Nome" class="control-label"></label>
+                        <input asp-for="Nome" class="form-control" />
+                        <span asp-validation-for="Nome" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="CrmCrn" class="control-label"></label>
+                        <input asp-for="CrmCrn" class="form-control" />
+                        <span asp-validation-for="CrmCrn" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Especialidade" class="control-label"></label>
+                        <input asp-for="Especialidade" class="form-control" />
+                        <span asp-validation-for="Especialidade" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Endereço</strong>
+                </div>
+
+                <div class="card-body">
+                    <div class="form-group mb-3">
+                        <label asp-for="Logradouro" class="control-label"></label>
+                        <input asp-for="Logradouro" class="form-control" />
+                        <span asp-validation-for="Logradouro" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Numero" class="control-label"></label>
+                        <input asp-for="Numero" class="form-control" />
+                        <span asp-validation-for="Numero" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Bairro" class="control-label"></label>
+                        <input asp-for="Bairro" class="form-control" />
+                        <span asp-validation-for="Bairro" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Cep" class="control-label"></label>
+                        <input asp-for="Cep" class="form-control" />
+                        <span asp-validation-for="Cep" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="IdCidade" class="control-label"></label>
+                        <select asp-for="IdCidade" class="form-control" asp-items="Model.Cidades">
+                            <option value="">Selecione uma cidade</option>
+                        </select>
+                        <span asp-validation-for="IdCidade" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Contato</strong>
+                </div>
+
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group mb-3">
+                                <label asp-for="Ddd1" class="control-label"></label>
+                                <input asp-for="Ddd1" class="form-control" />
+                                <span asp-validation-for="Ddd1" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-9">
+                            <div class="form-group mb-3">
+                                <label asp-for="Telefone1" class="control-label"></label>
+                                <input asp-for="Telefone1" class="form-control" />
+                                <span asp-validation-for="Telefone1" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group mb-3">
+                                <label asp-for="Ddd2" class="control-label"></label>
+                                <input asp-for="Ddd2" class="form-control" />
+                                <span asp-validation-for="Ddd2" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-9">
+                            <div class="form-group mb-3">
+                                <label asp-for="Telefone2" class="control-label"></label>
+                                <input asp-for="Telefone2" class="form-control" />
+                                <span asp-validation-for="Telefone2" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mt-4">
+                <input type="submit" value="Salvar alterações" class="btn btn-primary" />
+                <a asp-action="MeusDados" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

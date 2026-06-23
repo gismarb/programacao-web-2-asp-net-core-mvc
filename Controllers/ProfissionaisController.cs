@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Projeto1_IF.Data;
 using Projeto1_IF.Models;
 using Projeto1_IF.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Projeto1_IF.Controllers;
 
@@ -96,7 +97,7 @@ public class ProfissionaisController : Controller
     // 4. Associação do usuário à Role Medico ou Nutricionista.
     //
     // Justificativa técnica:
-    // Não usamos scaffolding aqui porque o cadastro envolve múltiplas tabelas
+    // Não é usado scaffolding aqui porque o cadastro envolve múltiplas tabelas
     // e regras de negócio que não pertencem a um CRUD simples.
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -106,7 +107,7 @@ public class ProfissionaisController : Controller
         //
         // Validação defensiva do tipo profissional.
         // Mesmo que a View envie o IdTipoProfissional em campo hidden,
-        // não podemos confiar cegamente no valor vindo do navegador.
+        // não se pode confiar cegamente no valor vindo do navegador.
         if (viewModel.IdTipoProfissional != 1 && viewModel.IdTipoProfissional != 2)
         {
             ModelState.AddModelError(
@@ -277,7 +278,7 @@ public class ProfissionaisController : Controller
             // Tratamento de erro de gravação no banco.
             //
             // Como o usuário Identity já pode ter sido criado antes do erro
-            // nas tabelas de domínio, removemos esse usuário para evitar
+            // nas tabelas de domínio, foi removido esse usuário para evitar
             // cadastro incompleto.
             await _userManager.DeleteAsync(usuario);
 
@@ -287,6 +288,198 @@ public class ProfissionaisController : Controller
 
             await PreencherCombosRegistroAsync(viewModel);
             return View("Registrar", viewModel);
+        }
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action responsável por exibir os dados do profissional logado.
+    //
+    // Regra de segurança aplicada:
+    // Somente usuários autenticados com Role Medico ou Nutricionista
+    // podem acessar esta tela.
+    //
+    // Além disso, a consulta LINQ filtra o cadastro pelo IdUser do usuário
+    // logado. Isso garante que um profissional não consiga visualizar dados
+    // de outro profissional apenas alterando parâmetros na URL.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpGet]
+    public async Task<IActionResult> MeusDados()
+    {
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .Include(p => p.IdCidadeNavigation)
+            .Include(p => p.IdContratoNavigation)
+                .ThenInclude(c => c.IdPlanoNavigation)
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        return View(profissional);
+    }
+
+        // Gismar Pereira Barbosa
+    //
+    // Action GET responsável por carregar a tela de edição dos dados
+    // do próprio profissional logado.
+    //
+    // Regra de segurança:
+    // A busca é feita pelo IdUser do usuário autenticado no Identity,
+    // e não por IdProfissional recebido pela URL.
+    //
+    // Isso impede que um profissional tente editar dados de outro
+    // profissional manipulando parâmetros de rota.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpGet]
+    public async Task<IActionResult> EditarMeusDados()
+    {
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        var viewModel = new EditarMeusDadosProfissionalViewModel
+        {
+            IdProfissional = profissional.IdProfissional,
+            Cpf = profissional.Cpf,
+            Nome = profissional.Nome,
+            CrmCrn = profissional.CrmCrn,
+            Especialidade = profissional.Especialidade,
+            Logradouro = profissional.Logradouro,
+            Numero = profissional.Numero,
+            Bairro = profissional.Bairro,
+            Cep = profissional.Cep,
+            IdCidade = profissional.IdCidade,
+            Ddd1 = profissional.Ddd1,
+            Telefone1 = profissional.Telefone1,
+            Ddd2 = profissional.Ddd2,
+            Telefone2 = profissional.Telefone2
+        };
+
+        await PreencherCidadesEdicaoAsync(viewModel);
+
+        return View(viewModel);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action POST responsável por salvar a edição dos dados do próprio
+    // profissional logado.
+    //
+    // Regra de segurança:
+    // Mesmo que o formulário envie IdProfissional, o Controller busca o
+    // registro pelo IdUser do usuário autenticado.
+    //
+    // Assim, o usuário não consegue editar outro profissional alterando
+    // o IdProfissional no HTML da página.
+    //
+    // Regra de negócio:
+    // O CPF não é atualizado nesta action. Ele aparece na tela apenas
+    // para consulta, atendendo ao requisito de que o profissional não
+    // pode alterar CPF após o cadastro.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditarMeusDados(
+        EditarMeusDadosProfissionalViewModel viewModel)
+    {
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var cidade = await _context.TbCidades
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.IdCidade == viewModel.IdCidade);
+
+        if (cidade == null)
+        {
+            ModelState.AddModelError(
+                nameof(viewModel.IdCidade),
+                "Cidade inválida.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await PreencherCidadesEdicaoAsync(viewModel);
+            return View(viewModel);
+        }
+
+        var profissional = await _context.TbProfissionals
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        // Gismar Pereira Barbosa
+        //
+        // Atualização controlada dos campos permitidos.
+        //
+        // Não atualiza:
+        // - Cpf
+        // - IdUser
+        // - IdContrato
+        // - IdTipoProfissional
+        // - IdTipoAcesso
+        //
+        // Isso evita alteração indevida de identidade, vínculo,
+        // contrato, papel profissional ou CPF.
+        profissional.Nome = viewModel.Nome;
+        profissional.CrmCrn = viewModel.CrmCrn;
+        profissional.Especialidade = viewModel.Especialidade;
+        profissional.Logradouro = viewModel.Logradouro;
+        profissional.Numero = viewModel.Numero;
+        profissional.Bairro = viewModel.Bairro;
+        profissional.Cep = viewModel.Cep;
+        profissional.IdCidade = viewModel.IdCidade;
+        profissional.Cidade = cidade!.Nome;
+        profissional.Ddd1 = viewModel.Ddd1;
+        profissional.Telefone1 = viewModel.Telefone1;
+        profissional.Ddd2 = viewModel.Ddd2;
+        profissional.Telefone2 = viewModel.Telefone2;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+
+            TempData["MensagemSucesso"] =
+                "Seus dados profissionais foram atualizados com sucesso.";
+
+            return RedirectToAction(nameof(MeusDados));
+        }
+        catch (DbUpdateException)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "Não foi possível salvar as alterações. Verifique os dados informados e tente novamente.");
+
+            await PreencherCidadesEdicaoAsync(viewModel);
+            return View(viewModel);
         }
     }
 
@@ -336,6 +529,27 @@ public class ProfissionaisController : Controller
             })
             .ToListAsync();
 
+        viewModel.Cidades = await _context.TbCidades
+            .AsNoTracking()
+            .OrderBy(c => c.Nome)
+            .Select(c => new SelectListItem
+            {
+                Value = c.IdCidade.ToString(),
+                Text = c.Nome ?? string.Empty
+            })
+            .ToListAsync();
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Método auxiliar usado pela tela EditarMeusDados.
+    //
+    // Ele carrega a lista de cidades para o combo da View.
+    // Foi separado do método de registro porque a edição não precisa
+    // carregar planos, apenas cidades.
+    private async Task PreencherCidadesEdicaoAsync(
+        EditarMeusDadosProfissionalViewModel viewModel)
+    {
         viewModel.Cidades = await _context.TbCidades
             .AsNoTracking()
             .OrderBy(c => c.Nome)
