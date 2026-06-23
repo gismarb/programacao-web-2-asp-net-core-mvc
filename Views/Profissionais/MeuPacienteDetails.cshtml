@@ -1,0 +1,138 @@
+@model Projeto1_IF.Models.TbMedicoPaciente
+
+@{
+    ViewData["Title"] = "Detalhes do paciente";
+
+    var paciente = Model.IdPacienteNavigation;
+}
+
+@*
+    Gismar Pereira Barbosa
+
+    View criada para exibir os detalhes de um paciente vinculado
+    ao profissional logado.
+
+    Justificativa técnica:
+    Esta tela recebe um registro de TbMedicoPaciente, e não apenas
+    TbPaciente, porque a autorização depende do vínculo entre
+    profissional e paciente.
+
+    A action MeuPacienteDetails garante que o paciente exibido pertence
+    ao profissional autenticado. Esta View apenas apresenta os dados
+    já autorizados pelo Controller.
+*@
+
+<h1>@ViewData["Title"]</h1>
+
+<p class="text-muted">
+    Consulta detalhada do paciente vinculado ao seu cadastro profissional.
+</p>
+
+<hr />
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Dados principais</strong>
+    </div>
+
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Nome</dt>
+            <dd class="col-sm-9">@paciente.Nome</dd>
+
+            <dt class="col-sm-3">CPF</dt>
+            <dd class="col-sm-9">@paciente.Cpf</dd>
+
+            <dt class="col-sm-3">RG</dt>
+            <dd class="col-sm-9">@paciente.Rg</dd>
+
+            <dt class="col-sm-3">Data de nascimento</dt>
+            <dd class="col-sm-9">@paciente.DataNascimento.ToString("dd/MM/yyyy")</dd>
+
+            <dt class="col-sm-3">Sexo</dt>
+            <dd class="col-sm-9">@paciente.Sexo</dd>
+
+            <dt class="col-sm-3">Etnia</dt>
+            <dd class="col-sm-9">@paciente.Etnia</dd>
+
+            <dt class="col-sm-3">Nome do responsável</dt>
+            <dd class="col-sm-9">@paciente.NomeResponsavel</dd>
+
+            <dt class="col-sm-3">Profissão</dt>
+            <dd class="col-sm-9">@paciente.Profissao</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Endereço</strong>
+    </div>
+
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Endereço</dt>
+            <dd class="col-sm-9">@paciente.Endereco</dd>
+
+            <dt class="col-sm-3">Bairro</dt>
+            <dd class="col-sm-9">@paciente.Bairro</dd>
+
+            <dt class="col-sm-3">Cidade</dt>
+            <dd class="col-sm-9">@paciente.IdCidadeNavigation?.Nome</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Contato</strong>
+    </div>
+
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Telefone residencial</dt>
+            <dd class="col-sm-9">@paciente.TelResidencial</dd>
+
+            <dt class="col-sm-3">Telefone comercial</dt>
+            <dd class="col-sm-9">@paciente.TelComercial</dd>
+
+            <dt class="col-sm-3">Telefone celular</dt>
+            <dd class="col-sm-9">@paciente.TelCelular</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Informações complementares</strong>
+    </div>
+
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Atleta</dt>
+            <dd class="col-sm-9">
+                @(paciente.FlgAtleta == true ? "Sim" : "Não")
+            </dd>
+
+            <dt class="col-sm-3">Gestante</dt>
+            <dd class="col-sm-9">
+                @(paciente.FlgGestante == true ? "Sim" : "Não")
+            </dd>
+
+            <dt class="col-sm-3">Informação resumida</dt>
+            <dd class="col-sm-9">@Model.InformacaoResumida</dd>
+        </dl>
+    </div>
+</div>
+
+<div>
+    <a asp-action="EditarMeuPaciente"
+       asp-route-id="@paciente.IdPaciente"
+       class="btn btn-primary">
+        Editar
+    </a>
+
+    <a asp-action="MeusPacientes" class="btn btn-secondary">
+        Voltar
+    </a>
+</div>

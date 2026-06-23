@@ -925,6 +925,558 @@ public class ProfissionaisController : Controller
 
     // Gismar Pereira Barbosa
     //
+    // Action responsável por listar os pacientes vinculados ao profissional logado.
+    //
+    // Regra de segurança:
+    // A consulta parte do IdUser do usuário autenticado no ASP.NET Core Identity.
+    // A partir dele, é localizado o IdProfissional correspondente em tbProfissional.
+    //
+    // Somente depois disso são consultados os vínculos existentes em
+    // tbMedico_Paciente. Dessa forma, a tela não depende de parâmetros de URL
+    // para decidir quais pacientes serão exibidos.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpGet]
+    public async Task<IActionResult> MeusPacientes()
+    {
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        var pacientes = await _context.TbMedicoPacientes
+            .AsNoTracking()
+            .Include(mp => mp.IdPacienteNavigation)
+                .ThenInclude(p => p.IdCidadeNavigation)
+            .Where(mp => mp.IdProfissional == profissional.IdProfissional)
+            .OrderBy(mp => mp.IdPacienteNavigation.Nome)
+            .Select(mp => new PacienteProfissionalViewModel
+            {
+                IdPaciente = mp.IdPaciente,
+                IdMedicoPaciente = mp.IdMedicoPaciente,
+                Nome = mp.IdPacienteNavigation.Nome,
+                Cpf = mp.IdPacienteNavigation.Cpf,
+                Rg = mp.IdPacienteNavigation.Rg,
+                DataNascimento = mp.IdPacienteNavigation.DataNascimento,
+                Sexo = mp.IdPacienteNavigation.Sexo,
+                Cidade = mp.IdPacienteNavigation.IdCidadeNavigation != null
+                    ? mp.IdPacienteNavigation.IdCidadeNavigation.Nome
+                    : string.Empty,
+                TelCelular = mp.IdPacienteNavigation.TelCelular,
+                InformacaoResumida = mp.InformacaoResumida
+            })
+            .ToListAsync();
+
+        return View(pacientes);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action responsável por exibir os detalhes de um paciente
+    // vinculado ao profissional logado.
+    //
+    // Regra de segurança:
+    // A action recebe o IdPaciente pela rota, mas não consulta o paciente
+    // diretamente em TbPacientes.
+    //
+    // Primeiro é localizado o profissional correspondente ao usuário logado.
+    // Depois é verificado se existe vínculo em tbMedico_Paciente entre
+    // esse profissional e o paciente solicitado.
+    //
+    // Isso impede que um Médico ou Nutricionista acesse detalhes de pacientes
+    // de outro profissional apenas alterando o id na URL.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpGet]
+    public async Task<IActionResult> MeuPacienteDetails(int? id)
+    {
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        var vinculoPaciente = await _context.TbMedicoPacientes
+            .AsNoTracking()
+            .Include(mp => mp.IdPacienteNavigation)
+                .ThenInclude(p => p.IdCidadeNavigation)
+            .FirstOrDefaultAsync(mp =>
+                mp.IdProfissional == profissional.IdProfissional &&
+                mp.IdPaciente == id.Value);
+
+        if (vinculoPaciente == null)
+        {
+            return Forbid();
+        }
+
+        return View(vinculoPaciente);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action GET responsável por carregar a tela de cadastro
+    // de paciente pelo profissional logado.
+    //
+    // A tela permite cadastrar os dados básicos do paciente e também
+    // a informação resumida do vínculo em tbMedico_Paciente.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpGet]
+    public async Task<IActionResult> CriarMeuPaciente()
+    {
+        var viewModel = new CriarMeuPacienteViewModel
+        {
+            DataNascimento = DateOnly.FromDateTime(DateTime.Today)
+        };
+
+        await PreencherCidadesPacienteAsync(viewModel);
+
+        return View(viewModel);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action POST responsável por cadastrar um novo paciente
+    // para o profissional logado.
+    //
+    // Regra de segurança:
+    // O IdProfissional não vem da View nem da URL.
+    // Ele é obtido a partir do IdUser do usuário autenticado.
+    //
+    // Fluxo de gravação:
+    // 1. Localiza o profissional logado;
+    // 2. Cria o registro em tbPaciente;
+    // 3. Cria o vínculo em tbMedico_Paciente;
+    // 4. Redireciona para a listagem MeusPacientes.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CriarMeuPaciente(
+        CriarMeuPacienteViewModel viewModel)
+    {
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        if (viewModel.IdCidade.HasValue)
+        {
+            var cidadeExiste = await _context.TbCidades
+                .AsNoTracking()
+                .AnyAsync(c => c.IdCidade == viewModel.IdCidade.Value);
+
+            if (!cidadeExiste)
+            {
+                ModelState.AddModelError(
+                    nameof(viewModel.IdCidade),
+                    "Cidade inválida.");
+            }
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await PreencherCidadesPacienteAsync(viewModel);
+            return View(viewModel);
+        }
+
+        var paciente = new TbPaciente
+        {
+            Nome = viewModel.Nome,
+            Rg = viewModel.Rg,
+            Cpf = viewModel.Cpf,
+            DataNascimento = viewModel.DataNascimento,
+            NomeResponsavel = viewModel.NomeResponsavel,
+            Sexo = viewModel.Sexo,
+            Etnia = viewModel.Etnia,
+            Endereco = viewModel.Endereco,
+            Bairro = viewModel.Bairro,
+            IdCidade = viewModel.IdCidade,
+            TelResidencial = viewModel.TelResidencial,
+            TelComercial = viewModel.TelComercial,
+            TelCelular = viewModel.TelCelular,
+            Profissao = viewModel.Profissao,
+            FlgAtleta = viewModel.FlgAtleta,
+            FlgGestante = viewModel.FlgGestante
+        };
+
+        var vinculo = new TbMedicoPaciente
+        {
+            IdProfissional = profissional.IdProfissional,
+            IdPacienteNavigation = paciente,
+            InformacaoResumida = viewModel.InformacaoResumida
+        };
+
+        try
+        {
+            _context.TbPacientes.Add(paciente);
+            _context.TbMedicoPacientes.Add(vinculo);
+
+            await _context.SaveChangesAsync();
+
+            TempData["MensagemSucesso"] =
+                "Paciente cadastrado e vinculado ao profissional com sucesso.";
+
+            return RedirectToAction(nameof(MeusPacientes));
+        }
+        catch (DbUpdateException)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "Não foi possível cadastrar o paciente. Verifique os dados informados e tente novamente.");
+
+            await PreencherCidadesPacienteAsync(viewModel);
+            return View(viewModel);
+        }
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action GET responsável por carregar a tela de edição
+    // de paciente vinculado ao profissional logado.
+    //
+    // Regra de segurança:
+    // A action recebe o IdPaciente pela rota, mas só permite a edição
+    // se existir vínculo em tbMedico_Paciente entre o paciente solicitado
+    // e o profissional autenticado.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpGet]
+    public async Task<IActionResult> EditarMeuPaciente(int? id)
+    {
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        var vinculoPaciente = await _context.TbMedicoPacientes
+            .AsNoTracking()
+            .Include(mp => mp.IdPacienteNavigation)
+            .FirstOrDefaultAsync(mp =>
+                mp.IdProfissional == profissional.IdProfissional &&
+                mp.IdPaciente == id.Value);
+
+        if (vinculoPaciente == null)
+        {
+            return Forbid();
+        }
+
+        var paciente = vinculoPaciente.IdPacienteNavigation;
+
+        var viewModel = new EditarMeuPacienteViewModel
+        {
+            IdPaciente = paciente.IdPaciente,
+            IdMedicoPaciente = vinculoPaciente.IdMedicoPaciente,
+            Nome = paciente.Nome,
+            Rg = paciente.Rg,
+            Cpf = paciente.Cpf,
+            DataNascimento = paciente.DataNascimento,
+            Sexo = paciente.Sexo,
+            Etnia = paciente.Etnia,
+            NomeResponsavel = paciente.NomeResponsavel,
+            Endereco = paciente.Endereco,
+            Bairro = paciente.Bairro,
+            IdCidade = paciente.IdCidade,
+            TelResidencial = paciente.TelResidencial,
+            TelComercial = paciente.TelComercial,
+            TelCelular = paciente.TelCelular,
+            Profissao = paciente.Profissao,
+            FlgAtleta = paciente.FlgAtleta ?? false,
+            FlgGestante = paciente.FlgGestante ?? false,
+            InformacaoResumida = vinculoPaciente.InformacaoResumida
+        };
+
+        await PreencherCidadesPacienteAsync(viewModel);
+
+        return View(viewModel);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action POST responsável por salvar a edição de paciente
+    // feita pelo profissional logado.
+    //
+    // Regra de segurança:
+    // O Controller recarrega o vínculo em tbMedico_Paciente usando:
+    // - IdProfissional do usuário autenticado;
+    // - IdPaciente recebido na rota/formulário.
+    //
+    // Dessa forma, mesmo que alguém altere o HTML da página, a edição
+    // só acontece se o paciente realmente estiver vinculado ao profissional.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditarMeuPaciente(
+        int id,
+        EditarMeuPacienteViewModel viewModel)
+    {
+        if (id != viewModel.IdPaciente)
+        {
+            return NotFound();
+        }
+
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        var vinculoPaciente = await _context.TbMedicoPacientes
+            .Include(mp => mp.IdPacienteNavigation)
+            .FirstOrDefaultAsync(mp =>
+                mp.IdProfissional == profissional.IdProfissional &&
+                mp.IdPaciente == id);
+
+        if (vinculoPaciente == null)
+        {
+            return Forbid();
+        }
+
+        if (viewModel.IdCidade.HasValue)
+        {
+            var cidadeExiste = await _context.TbCidades
+                .AsNoTracking()
+                .AnyAsync(c => c.IdCidade == viewModel.IdCidade.Value);
+
+            if (!cidadeExiste)
+            {
+                ModelState.AddModelError(
+                    nameof(viewModel.IdCidade),
+                    "Cidade inválida.");
+            }
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await PreencherCidadesPacienteAsync(viewModel);
+            return View(viewModel);
+        }
+
+        var paciente = vinculoPaciente.IdPacienteNavigation;
+
+        // Gismar Pereira Barbosa
+        //
+        // Atualização controlada dos dados do paciente.
+        //
+        // A edição só chega neste ponto após validar o vínculo entre
+        // profissional logado e paciente em tbMedico_Paciente.
+        paciente.Nome = viewModel.Nome;
+        paciente.Rg = viewModel.Rg;
+        paciente.Cpf = viewModel.Cpf;
+        paciente.DataNascimento = viewModel.DataNascimento;
+        paciente.Sexo = viewModel.Sexo;
+        paciente.Etnia = viewModel.Etnia;
+        paciente.NomeResponsavel = viewModel.NomeResponsavel;
+        paciente.Endereco = viewModel.Endereco;
+        paciente.Bairro = viewModel.Bairro;
+        paciente.IdCidade = viewModel.IdCidade;
+        paciente.TelResidencial = viewModel.TelResidencial;
+        paciente.TelComercial = viewModel.TelComercial;
+        paciente.TelCelular = viewModel.TelCelular;
+        paciente.Profissao = viewModel.Profissao;
+        paciente.FlgAtleta = viewModel.FlgAtleta;
+        paciente.FlgGestante = viewModel.FlgGestante;
+
+        // A informação resumida pertence ao vínculo profissional-paciente,
+        // não ao cadastro principal do paciente.
+        vinculoPaciente.InformacaoResumida = viewModel.InformacaoResumida;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+
+            TempData["MensagemSucesso"] =
+                "Paciente atualizado com sucesso.";
+
+            return RedirectToAction(nameof(MeuPacienteDetails), new { id = paciente.IdPaciente });
+        }
+        catch (DbUpdateException)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "Não foi possível salvar as alterações do paciente. Verifique os dados informados e tente novamente.");
+
+            await PreencherCidadesPacienteAsync(viewModel);
+            return View(viewModel);
+        }
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action GET responsável por carregar a tela de confirmação
+    // para remover o vínculo entre paciente e profissional logado.
+    //
+    // Regra de segurança:
+    // A action recebe o IdPaciente pela rota, mas só exibe a confirmação
+    // se existir vínculo em tbMedico_Paciente entre o paciente solicitado
+    // e o profissional autenticado.
+    //
+    // Observação técnica:
+    // Esta exclusão remove apenas o vínculo em tbMedico_Paciente.
+    // O cadastro principal do paciente em tbPaciente é preservado.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpGet]
+    public async Task<IActionResult> ExcluirMeuPaciente(int? id)
+    {
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        var vinculoPaciente = await _context.TbMedicoPacientes
+            .AsNoTracking()
+            .Include(mp => mp.IdPacienteNavigation)
+                .ThenInclude(p => p.IdCidadeNavigation)
+            .FirstOrDefaultAsync(mp =>
+                mp.IdProfissional == profissional.IdProfissional &&
+                mp.IdPaciente == id.Value);
+
+        if (vinculoPaciente == null)
+        {
+            return Forbid();
+        }
+
+        return View(vinculoPaciente);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action POST responsável por remover o vínculo entre paciente
+    // e profissional logado.
+    //
+    // Regra de segurança:
+    // A validação do vínculo é repetida no POST, pois a operação real
+    // não pode depender apenas da tela de confirmação exibida no GET.
+    //
+    // Regra de negócio:
+    // O registro em tbPaciente não é excluído. Apenas o vínculo em
+    // tbMedico_Paciente é removido, preservando o paciente no banco.
+    [Authorize(Roles = "Medico,Nutricionista")]
+    [HttpPost, ActionName("ExcluirMeuPaciente")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExcluirMeuPacienteConfirmed(int id)
+    {
+        var idUsuarioLogado = _userManager.GetUserId(User);
+
+        if (string.IsNullOrEmpty(idUsuarioLogado))
+        {
+            return Challenge();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUser == idUsuarioLogado);
+
+        if (profissional == null)
+        {
+            return NotFound("Cadastro profissional não encontrado para o usuário logado.");
+        }
+
+        var vinculoPaciente = await _context.TbMedicoPacientes
+            .FirstOrDefaultAsync(mp =>
+                mp.IdProfissional == profissional.IdProfissional &&
+                mp.IdPaciente == id);
+
+        if (vinculoPaciente == null)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            _context.TbMedicoPacientes.Remove(vinculoPaciente);
+            await _context.SaveChangesAsync();
+
+            TempData["MensagemSucesso"] =
+                "Vínculo do paciente removido com sucesso.";
+
+            return RedirectToAction(nameof(MeusPacientes));
+        }
+        catch (DbUpdateException)
+        {
+            TempData["MensagemErro"] =
+                "Não foi possível remover o vínculo do paciente. Verifique se existem dependências no banco de dados.";
+
+            return RedirectToAction(nameof(MeusPacientes));
+        }
+    }
+    
+    // Gismar Pereira Barbosa
+    //
     // Método auxiliar responsável por montar um ViewModel novo
     // para as actions GET de registro.
     private async Task<RegistroProfissionalViewModel> MontarViewModelRegistroAsync(
@@ -1068,5 +1620,46 @@ public class ProfissionaisController : Controller
             2 => "Nutricionista",
             _ => "Não identificado"
         };
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Método auxiliar usado nas telas de criação e edição de pacientes.
+    //
+    // Ele carrega a lista de cidades para o combo da View.
+    // A lista não é gravada diretamente no banco; apenas o IdCidade
+    // selecionado é persistido no cadastro do paciente.
+    private async Task PreencherCidadesPacienteAsync(
+        CriarMeuPacienteViewModel viewModel)
+    {
+        viewModel.Cidades = await _context.TbCidades
+            .AsNoTracking()
+            .OrderBy(c => c.Nome)
+            .Select(c => new SelectListItem
+            {
+                Value = c.IdCidade.ToString(),
+                Text = c.Nome ?? string.Empty
+            })
+            .ToListAsync();
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Sobrecarga do método de cidades usada na edição de paciente.
+    //
+    // A lógica é a mesma da criação, mas o ViewModel de edição
+    // possui tipo próprio para separar responsabilidades da tela.
+    private async Task PreencherCidadesPacienteAsync(
+        EditarMeuPacienteViewModel viewModel)
+    {
+        viewModel.Cidades = await _context.TbCidades
+            .AsNoTracking()
+            .OrderBy(c => c.Nome)
+            .Select(c => new SelectListItem
+            {
+                Value = c.IdCidade.ToString(),
+                Text = c.Nome ?? string.Empty
+            })
+            .ToListAsync();
     }
 }

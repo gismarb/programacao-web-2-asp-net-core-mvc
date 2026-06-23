@@ -1,0 +1,86 @@
+@model Projeto1_IF.Models.TbMedicoPaciente
+
+@{
+    ViewData["Title"] = "Excluir paciente da minha lista";
+
+    var paciente = Model.IdPacienteNavigation;
+}
+
+@*
+    Gismar Pereira Barbosa
+
+    View criada para confirmação de remoção do vínculo entre paciente
+    e profissional logado.
+
+    Justificativa técnica:
+    Esta tela trabalha com TbMedicoPaciente porque a operação não remove
+    o cadastro principal do paciente em tbPaciente.
+
+    A exclusão remove apenas o vínculo em tbMedico_Paciente, preservando
+    o paciente no banco de dados para evitar perda indevida de informações
+    que possam estar associadas a outros profissionais ou históricos 
+    (em possíveis implementações).
+*@
+
+<h1>@ViewData["Title"]</h1>
+
+<p class="text-muted">
+    Confirme a remoção do paciente da sua lista de atendimento.
+</p>
+
+<hr />
+
+<div class="alert alert-warning">
+    <strong>Atenção:</strong>
+    esta operação remove apenas o vínculo entre você e o paciente.
+    O cadastro principal do paciente será preservado no banco de dados.
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Dados do paciente</strong>
+    </div>
+
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Nome</dt>
+            <dd class="col-sm-9">@paciente.Nome</dd>
+
+            <dt class="col-sm-3">CPF</dt>
+            <dd class="col-sm-9">@paciente.Cpf</dd>
+
+            <dt class="col-sm-3">RG</dt>
+            <dd class="col-sm-9">@paciente.Rg</dd>
+
+            <dt class="col-sm-3">Data de nascimento</dt>
+            <dd class="col-sm-9">@paciente.DataNascimento.ToString("dd/MM/yyyy")</dd>
+
+            <dt class="col-sm-3">Sexo</dt>
+            <dd class="col-sm-9">@paciente.Sexo</dd>
+
+            <dt class="col-sm-3">Cidade</dt>
+            <dd class="col-sm-9">@paciente.IdCidadeNavigation?.Nome</dd>
+
+            <dt class="col-sm-3">Informação resumida</dt>
+            <dd class="col-sm-9">@Model.InformacaoResumida</dd>
+        </dl>
+    </div>
+</div>
+
+<form asp-action="ExcluirMeuPaciente" method="post">
+    <input type="hidden" name="id" value="@paciente.IdPaciente" />
+
+    <input type="submit"
+           value="Remover vínculo"
+           class="btn btn-danger" />
+
+    <a asp-action="MeuPacienteDetails"
+       asp-route-id="@paciente.IdPaciente"
+       class="btn btn-secondary">
+        Cancelar
+    </a>
+
+    <a asp-action="MeusPacientes" class="btn btn-outline-secondary">
+        Voltar para meus pacientes
+    </a>
+</form>
