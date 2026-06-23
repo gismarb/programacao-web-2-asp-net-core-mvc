@@ -1,0 +1,36 @@
+@page
+
+@{
+    ViewData["Title"] = "Acesso negado";
+}
+
+@*
+    Gismar Pereira Barbosa
+
+    Página criada para substituir a mensagem padrão "Access Denied"
+    do ASP.NET Core Identity.
+
+    Justificativa técnica:
+    O sistema utiliza autorização baseada em Roles. Quando um usuário
+    autenticado tenta acessar uma área sem permissão, o Identity direciona
+    para esta página.
+
+    A mensagem em português melhora a experiência do usuário e deixa
+    a apresentação do trabalho mais consistente.
+*@
+
+<h1 class="text-danger">Acesso negado</h1>
+
+<div class="alert alert-warning mt-3">
+    <strong>Você não possui permissão para acessar este recurso.</strong>
+</div>
+
+<p class="text-muted">
+    O acesso a esta página depende do perfil do usuário autenticado.
+    Verifique se está utilizando uma conta com a permissão correta.
+</p>
+
+<a href="/"
+   class="btn btn-primary">
+    Voltar para a página inicial
+</a>
