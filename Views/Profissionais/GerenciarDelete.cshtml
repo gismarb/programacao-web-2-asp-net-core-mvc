@@ -1,0 +1,114 @@
+@model Projeto1_IF.Models.TbProfissional
+
+@{
+    ViewData["Title"] = "Excluir profissional";
+
+    var tipoProfissional = Model.IdTipoProfissional == 1
+        ? "Médico"
+        : Model.IdTipoProfissional == 2
+            ? "Nutricionista"
+            : "Não identificado";
+
+    var possuiPacientes = ViewData["PossuiPacientes"] as bool? ?? false;
+}
+
+@*
+    Gismar Pereira Barbosa
+
+    View criada para confirmação de exclusão gerencial de profissional.
+
+    Justificativa técnica:
+    A tela informa ao gerente se o profissional pode ou não ser excluído.
+    A regra principal determina que profissionais com pacientes vinculados
+    em tbMedico_Paciente não podem ser removidos.
+
+    A validação exibida aqui é apenas informativa. A proteção real também
+    é executada no POST GerenciarDeleteConfirmed, dentro do Controller.
+*@
+
+<h1>@ViewData["Title"]</h1>
+
+<p class="text-muted">
+    Confirmação de exclusão do cadastro profissional selecionado.
+</p>
+
+<hr />
+
+@if (TempData["MensagemErro"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["MensagemErro"]
+    </div>
+}
+
+@if (TempData["MensagemSucesso"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["MensagemSucesso"]
+    </div>
+}
+
+@if (possuiPacientes)
+{
+    <div class="alert alert-warning">
+        <strong>Exclusão bloqueada.</strong>
+        @ViewData["MensagemBloqueio"]
+    </div>
+}
+else
+{
+    <div class="alert alert-danger">
+        <strong>Atenção:</strong>
+        esta operação removerá o cadastro profissional e o contrato vinculado.
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Dados do profissional</strong>
+    </div>
+
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Nome</dt>
+            <dd class="col-sm-9">@Model.Nome</dd>
+
+            <dt class="col-sm-3">CPF</dt>
+            <dd class="col-sm-9">@Model.Cpf</dd>
+
+            <dt class="col-sm-3">Tipo profissional</dt>
+            <dd class="col-sm-9">@tipoProfissional</dd>
+
+            <dt class="col-sm-3">CRM/CRN</dt>
+            <dd class="col-sm-9">@Model.CrmCrn</dd>
+
+            <dt class="col-sm-3">Especialidade</dt>
+            <dd class="col-sm-9">@Model.Especialidade</dd>
+
+            <dt class="col-sm-3">Cidade</dt>
+            <dd class="col-sm-9">@Model.IdCidadeNavigation?.Nome</dd>
+
+            <dt class="col-sm-3">Plano</dt>
+            <dd class="col-sm-9">@Model.IdContratoNavigation?.IdPlanoNavigation?.Nome</dd>
+        </dl>
+    </div>
+</div>
+
+<form asp-action="GerenciarDelete" method="post">
+    <input type="hidden" asp-for="IdProfissional" />
+
+    @if (!possuiPacientes)
+    {
+        <input type="submit" value="Confirmar exclusão" class="btn btn-danger" />
+    }
+
+    <a asp-action="GerenciarDetails"
+       asp-route-id="@Model.IdProfissional"
+       class="btn btn-secondary">
+        Cancelar
+    </a>
+
+    <a asp-action="Gerenciar" class="btn btn-outline-secondary">
+        Voltar para listagem
+    </a>
+</form>

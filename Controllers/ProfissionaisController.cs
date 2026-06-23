@@ -26,6 +26,7 @@ namespace Projeto1_IF.Controllers;
 public class ProfissionaisController : Controller
 {
     private readonly db_IFContext _context;
+    private readonly ApplicationDbContext _identityContext;
     private readonly UserManager<IdentityUser> _userManager;
 
     // Gismar Pereira Barbosa
@@ -36,14 +37,20 @@ public class ProfissionaisController : Controller
     // acesso às tabelas do banco da disciplina, como tbProfissional,
     // tbContrato, tbPlano e tbCidade.
     //
+    // ApplicationDbContext:
+    // acesso às tabelas do ASP.NET Core Identity, como AspNetUsers,
+    // AspNetRoles e AspNetUserRoles.
+    //
     // UserManager<IdentityUser>:
     // serviço do ASP.NET Core Identity usado para criar usuários,
     // consultar usuário logado e associar Roles.
     public ProfissionaisController(
         db_IFContext context,
+        ApplicationDbContext identityContext,
         UserManager<IdentityUser> userManager)
     {
         _context = context;
+        _identityContext = identityContext;
         _userManager = userManager;
     }
 
@@ -485,6 +492,439 @@ public class ProfissionaisController : Controller
 
     // Gismar Pereira Barbosa
     //
+    // Action responsável pela listagem gerencial de profissionais.
+    //
+    // Regra de autorização:
+    // Somente usuários com perfil gerencial podem acessar esta tela.
+    //
+    // Regras de filtro aplicadas no Controller:
+    // - GerenteMedico visualiza apenas profissionais do tipo Médico;
+    // - GerenteNutricionista visualiza apenas profissionais do tipo Nutricionista;
+    // - GerenteGeral visualiza todos os profissionais.
+    //
+    // A filtragem é feita na consulta LINQ antes dos dados chegarem à View.
+    // A segurança não depende apenas de esconder links ou botões.
+    [Authorize(Roles = "GerenteMedico,GerenteNutricionista,GerenteGeral")]
+    [HttpGet]
+    public async Task<IActionResult> Gerenciar()
+    {
+        var query = _context.TbProfissionals
+            .AsNoTracking()
+            .Include(p => p.IdContratoNavigation)
+                .ThenInclude(c => c.IdPlanoNavigation)
+            .AsQueryable();
+
+        if (User.IsInRole("GerenteMedico"))
+        {
+            query = query.Where(p => p.IdTipoProfissional == 1);
+            ViewData["TituloGerencial"] = "Gerenciamento de Médicos";
+        }
+        else if (User.IsInRole("GerenteNutricionista"))
+        {
+            query = query.Where(p => p.IdTipoProfissional == 2);
+            ViewData["TituloGerencial"] = "Gerenciamento de Nutricionistas";
+        }
+        else
+        {
+            ViewData["TituloGerencial"] = "Gerenciamento de Profissionais";
+        }
+
+        // Gismar Pereira Barbosa
+        //
+        // Primeira consulta:
+        // carrega os profissionais, contratos e planos usando db_IFContext.
+        //
+        // Esta consulta não acessa tabelas do Identity para evitar misturar
+        // dois contextos diferentes dentro da mesma execução LINQ.
+        var profissionaisBanco = await query
+            .OrderBy(p => p.Nome)
+            .ToListAsync();
+
+        var idsUsuarios = profissionaisBanco
+            .Select(p => p.IdUser)
+            .Distinct()
+            .ToList();
+
+        // Gismar Pereira Barbosa
+        //
+        // Segunda consulta:
+        // carrega os usuários vinculados usando ApplicationDbContext,
+        // que é o contexto responsável pelas tabelas do ASP.NET Core Identity.
+        //
+        // O resultado é convertido para Dictionary para facilitar a busca
+        // do e-mail pelo IdUser durante a montagem do ViewModel.
+        var emailsUsuarios = await _identityContext.Users
+            .AsNoTracking()
+            .Where(u => idsUsuarios.Contains(u.Id))
+            .Select(u => new
+            {
+                u.Id,
+                Email = u.Email ?? string.Empty
+            })
+            .ToDictionaryAsync(u => u.Id, u => u.Email);
+
+        // Gismar Pereira Barbosa
+        //
+        // Montagem do ViewModel em memória.
+        //
+        // Neste ponto, as duas consultas ao banco já foram executadas
+        // separadamente. Por isso, é seguro combinar os dados de profissional
+        // e usuário sem gerar erro de múltiplos contextos no Entity Framework.
+        var profissionais = profissionaisBanco
+            .Select(p => new ProfissionalGerencialViewModel
+            {
+                IdProfissional = p.IdProfissional,
+                Nome = p.Nome,
+                Cpf = p.Cpf,
+                IdTipoProfissional = p.IdTipoProfissional,
+                TipoProfissional = p.IdTipoProfissional == 1
+                    ? "Médico"
+                    : p.IdTipoProfissional == 2
+                        ? "Nutricionista"
+                        : "Não identificado",
+                CrmCrn = p.CrmCrn,
+                Especialidade = p.Especialidade,
+                Cidade = p.Cidade,
+                EmailUsuario = emailsUsuarios.ContainsKey(p.IdUser)
+                    ? emailsUsuarios[p.IdUser]
+                    : string.Empty,
+                Plano = p.IdContratoNavigation?.IdPlanoNavigation?.Nome ?? string.Empty
+            })
+            .ToList();
+
+        return View(profissionais);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action responsável por exibir os detalhes de um profissional
+    // na área gerencial.
+    //
+    // A action recebe IdProfissional pela rota, mas aplica validação
+    // de autorização no Controller antes de retornar os dados para a View.
+    //
+    // Regras:
+    // - GerenteMedico só pode visualizar profissionais médicos;
+    // - GerenteNutricionista só pode visualizar profissionais nutricionistas;
+    // - GerenteGeral pode visualizar qualquer profissional.
+    [Authorize(Roles = "GerenteMedico,GerenteNutricionista,GerenteGeral")]
+    [HttpGet]
+    public async Task<IActionResult> GerenciarDetails(int? id)
+    {
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .Include(p => p.IdCidadeNavigation)
+            .Include(p => p.IdContratoNavigation)
+                .ThenInclude(c => c.IdPlanoNavigation)
+            .FirstOrDefaultAsync(p => p.IdProfissional == id);
+
+        if (profissional == null)
+        {
+            return NotFound();
+        }
+
+        if (!UsuarioGerencialPodeAcessarProfissional(profissional.IdTipoProfissional))
+        {
+            return Forbid();
+        }
+
+        return View(profissional);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action GET responsável por carregar a tela de edição gerencial
+    // de um profissional.
+    //
+    // A action recebe o IdProfissional pela rota, mas antes de exibir
+    // os dados aplica a validação de autorização gerencial.
+    //
+    // Regras:
+    // - GerenteMedico só pode editar profissionais médicos;
+    // - GerenteNutricionista só pode editar profissionais nutricionistas;
+    // - GerenteGeral pode editar qualquer profissional.
+    [Authorize(Roles = "GerenteMedico,GerenteNutricionista,GerenteGeral")]
+    [HttpGet]
+    public async Task<IActionResult> GerenciarEdit(int? id)
+    {
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdProfissional == id);
+
+        if (profissional == null)
+        {
+            return NotFound();
+        }
+
+        if (!UsuarioGerencialPodeAcessarProfissional(profissional.IdTipoProfissional))
+        {
+            return Forbid();
+        }
+
+        var viewModel = new EditarProfissionalGerencialViewModel
+        {
+            IdProfissional = profissional.IdProfissional,
+            IdTipoProfissional = profissional.IdTipoProfissional,
+            TipoProfissionalNome = ObterNomeTipoProfissional(profissional.IdTipoProfissional),
+            Nome = profissional.Nome,
+            Cpf = profissional.Cpf,
+            CrmCrn = profissional.CrmCrn,
+            Especialidade = profissional.Especialidade,
+            Logradouro = profissional.Logradouro,
+            Numero = profissional.Numero,
+            Bairro = profissional.Bairro,
+            Cep = profissional.Cep,
+            IdCidade = profissional.IdCidade,
+            Ddd1 = profissional.Ddd1,
+            Telefone1 = profissional.Telefone1,
+            Ddd2 = profissional.Ddd2,
+            Telefone2 = profissional.Telefone2
+        };
+
+        await PreencherCidadesGerencialAsync(viewModel);
+
+        return View(viewModel);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action POST responsável por salvar a edição gerencial de um profissional.
+    //
+    // Regra de segurança:
+    // O Controller recarrega o profissional pelo IdProfissional e valida
+    // se o gerente logado pode acessar aquele tipo de profissional.
+    //
+    // Regra de negócio:
+    // Diferente da edição feita pelo próprio profissional, nesta edição
+    // gerencial o CPF pode ser alterado.
+    //
+    // Campos estruturais não são alterados:
+    // - IdUser;
+    // - IdContrato;
+    // - IdTipoProfissional;
+    // - IdTipoAcesso.
+    [Authorize(Roles = "GerenteMedico,GerenteNutricionista,GerenteGeral")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GerenciarEdit(
+        int id,
+        EditarProfissionalGerencialViewModel viewModel)
+    {
+        if (id != viewModel.IdProfissional)
+        {
+            return NotFound();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .FirstOrDefaultAsync(p => p.IdProfissional == id);
+
+        if (profissional == null)
+        {
+            return NotFound();
+        }
+
+        if (!UsuarioGerencialPodeAcessarProfissional(profissional.IdTipoProfissional))
+        {
+            return Forbid();
+        }
+
+        var cidade = await _context.TbCidades
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.IdCidade == viewModel.IdCidade);
+
+        if (cidade == null)
+        {
+            ModelState.AddModelError(
+                nameof(viewModel.IdCidade),
+                "Cidade inválida.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            viewModel.IdTipoProfissional = profissional.IdTipoProfissional;
+            viewModel.TipoProfissionalNome = ObterNomeTipoProfissional(profissional.IdTipoProfissional);
+
+            await PreencherCidadesGerencialAsync(viewModel);
+            return View(viewModel);
+        }
+
+        // Gismar Pereira Barbosa
+        //
+        // Atualização controlada dos campos permitidos na edição gerencial.
+        //
+        // Nesta tela, o CPF pode ser alterado pelo gerente.
+        // Os campos de vínculo e estrutura permanecem preservados.
+        profissional.Nome = viewModel.Nome;
+        profissional.Cpf = viewModel.Cpf;
+        profissional.CrmCrn = viewModel.CrmCrn;
+        profissional.Especialidade = viewModel.Especialidade;
+        profissional.Logradouro = viewModel.Logradouro;
+        profissional.Numero = viewModel.Numero;
+        profissional.Bairro = viewModel.Bairro;
+        profissional.Cep = viewModel.Cep;
+        profissional.IdCidade = viewModel.IdCidade;
+        profissional.Cidade = cidade!.Nome;
+        profissional.Ddd1 = viewModel.Ddd1;
+        profissional.Telefone1 = viewModel.Telefone1;
+        profissional.Ddd2 = viewModel.Ddd2;
+        profissional.Telefone2 = viewModel.Telefone2;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+
+            TempData["MensagemSucesso"] =
+                "Cadastro profissional atualizado com sucesso.";
+
+            return RedirectToAction(nameof(GerenciarDetails), new { id = profissional.IdProfissional });
+        }
+        catch (DbUpdateException)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "Não foi possível salvar as alterações. Verifique os dados informados e tente novamente.");
+
+            viewModel.IdTipoProfissional = profissional.IdTipoProfissional;
+            viewModel.TipoProfissionalNome = ObterNomeTipoProfissional(profissional.IdTipoProfissional);
+
+            await PreencherCidadesGerencialAsync(viewModel);
+            return View(viewModel);
+        }
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action GET responsável por carregar a tela de confirmação
+    // de exclusão gerencial de um profissional.
+    //
+    // A action valida se o gerente logado pode acessar o tipo profissional
+    // selecionado e também verifica se existem pacientes vinculados.
+    //
+    // Regra de negócio:
+    // O profissional só pode ser excluído se não possuir pacientes
+    // cadastrados em tbMedico_Paciente.
+    [Authorize(Roles = "GerenteMedico,GerenteNutricionista,GerenteGeral")]
+    [HttpGet]
+    public async Task<IActionResult> GerenciarDelete(int? id)
+    {
+        if (id == null)
+        {
+            return NotFound();
+        }
+
+        var profissional = await _context.TbProfissionals
+            .AsNoTracking()
+            .Include(p => p.IdCidadeNavigation)
+            .Include(p => p.IdContratoNavigation)
+                .ThenInclude(c => c.IdPlanoNavigation)
+            .FirstOrDefaultAsync(p => p.IdProfissional == id);
+
+        if (profissional == null)
+        {
+            return NotFound();
+        }
+
+        if (!UsuarioGerencialPodeAcessarProfissional(profissional.IdTipoProfissional))
+        {
+            return Forbid();
+        }
+
+        var possuiPacientes = await _context.TbMedicoPacientes
+            .AsNoTracking()
+            .AnyAsync(mp => mp.IdProfissional == profissional.IdProfissional);
+
+        ViewData["PossuiPacientes"] = possuiPacientes;
+
+        if (possuiPacientes)
+        {
+            ViewData["MensagemBloqueio"] =
+                "Este profissional possui pacientes vinculados e não pode ser excluído.";
+        }
+
+        return View(profissional);
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Action POST responsável por executar a exclusão gerencial
+    // de um profissional.
+    //
+    // A validação de pacientes vinculados é repetida no POST.
+    // Isso é necessário porque a regra de segurança não pode depender
+    // apenas da tela de confirmação exibida no GET.
+    //
+    // Se houver qualquer registro em tbMedico_Paciente para o profissional,
+    // a exclusão é bloqueada.
+    [Authorize(Roles = "GerenteMedico,GerenteNutricionista,GerenteGeral")]
+    [HttpPost, ActionName("GerenciarDelete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> GerenciarDeleteConfirmed(int id)
+    {
+        var profissional = await _context.TbProfissionals
+            .Include(p => p.IdContratoNavigation)
+            .FirstOrDefaultAsync(p => p.IdProfissional == id);
+
+        if (profissional == null)
+        {
+            return NotFound();
+        }
+
+        if (!UsuarioGerencialPodeAcessarProfissional(profissional.IdTipoProfissional))
+        {
+            return Forbid();
+        }
+
+        var possuiPacientes = await _context.TbMedicoPacientes
+            .AsNoTracking()
+            .AnyAsync(mp => mp.IdProfissional == profissional.IdProfissional);
+
+        if (possuiPacientes)
+        {
+            TempData["MensagemErro"] =
+                "Não foi possível excluir o profissional, pois existem pacientes vinculados ao cadastro.";
+
+            return RedirectToAction(nameof(GerenciarDelete), new { id = profissional.IdProfissional });
+        }
+
+        try
+        {
+            var contrato = profissional.IdContratoNavigation;
+
+            _context.TbProfissionals.Remove(profissional);
+
+            if (contrato != null)
+            {
+                _context.TbContratos.Remove(contrato);
+            }
+
+            await _context.SaveChangesAsync();
+
+            TempData["MensagemSucesso"] =
+                "Profissional excluído com sucesso.";
+
+            return RedirectToAction(nameof(Gerenciar));
+        }
+        catch (DbUpdateException)
+        {
+            TempData["MensagemErro"] =
+                "Não foi possível excluir o profissional. Verifique se existem vínculos no banco de dados.";
+
+            return RedirectToAction(nameof(GerenciarDelete), new { id = profissional.IdProfissional });
+        }
+    }
+
+    // Gismar Pereira Barbosa
+    //
     // Método auxiliar responsável por montar um ViewModel novo
     // para as actions GET de registro.
     private async Task<RegistroProfissionalViewModel> MontarViewModelRegistroAsync(
@@ -559,5 +999,74 @@ public class ProfissionaisController : Controller
                 Text = c.Nome ?? string.Empty
             })
             .ToListAsync();
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Método auxiliar para validar se o gerente logado pode acessar
+    // determinado tipo de profissional.
+    //
+    // Esta validação é usada nas actions gerenciais de Details, Edit e Delete.
+    //
+    // O objetivo é centralizar a regra de segurança:
+    // GerenteMedico acessa apenas Médico.
+    // GerenteNutricionista acessa apenas Nutricionista.
+    // GerenteGeral acessa todos.
+    private bool UsuarioGerencialPodeAcessarProfissional(int? idTipoProfissional)
+    {
+        if (User.IsInRole("GerenteGeral"))
+        {
+            return true;
+        }
+
+        if (User.IsInRole("GerenteMedico") && idTipoProfissional == 1)
+        {
+            return true;
+        }
+
+        if (User.IsInRole("GerenteNutricionista") && idTipoProfissional == 2)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+        // Gismar Pereira Barbosa
+    //
+    // Método auxiliar usado pela edição gerencial.
+    //
+    // Ele carrega a lista de cidades para o combo da View.
+    // A lógica fica separada para evitar repetição dentro das actions
+    // GerenciarEdit GET e POST.
+    private async Task PreencherCidadesGerencialAsync(
+        EditarProfissionalGerencialViewModel viewModel)
+    {
+        viewModel.Cidades = await _context.TbCidades
+            .AsNoTracking()
+            .OrderBy(c => c.Nome)
+            .Select(c => new SelectListItem
+            {
+                Value = c.IdCidade.ToString(),
+                Text = c.Nome ?? string.Empty
+            })
+            .ToListAsync();
+    }
+
+    // Gismar Pereira Barbosa
+    //
+    // Método auxiliar para converter o IdTipoProfissional em texto.
+    //
+    // O scaffold do Entity Framework não gerou propriedade de navegação
+    // entre TbProfissional e TbTipoProfissional. Por isso, a conversão
+    // é feita diretamente a partir do valor da coluna IdTipoProfissional.
+    private string ObterNomeTipoProfissional(int? idTipoProfissional)
+    {
+        return idTipoProfissional switch
+        {
+            1 => "Médico",
+            2 => "Nutricionista",
+            _ => "Não identificado"
+        };
     }
 }
