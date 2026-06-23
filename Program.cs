@@ -14,6 +14,21 @@ builder.Services.AddDbContext<db_IFContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+// Gismar Pereira Barbosa
+//
+// Configuração do ASP.NET Core Identity.
+// A chamada AddRoles<IdentityRole>() foi adicionada para permitir
+// autorização baseada em perfis/funções, como:
+//
+// - Medico
+// - Nutricionista
+// - GerenteMedico
+// - GerenteNutricionista
+// - GerenteGeral
+//
+// Essa configuração é necessária para que atributos como
+// [Authorize(Roles = "GerenteMedico")]
+// e verificações como User.IsInRole("Medico") funcionem corretamente.
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();

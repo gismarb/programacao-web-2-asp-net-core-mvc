@@ -1,0 +1,184 @@
+@model Projeto1_IF.ViewModels.RegistroProfissionalViewModel
+
+@{
+    ViewData["Title"] = $"Registro de {Model.TipoProfissionalNome}";
+}
+
+@* 
+    Gismar Pereira Barbosa
+
+    View criada para atender ao Trabalho Final de Programação Web II.
+
+    Objetivo:
+    apresentar o formulário de registro completo de Médico ou Nutricionista.
+
+    Justificativa técnica:
+    Esta View utiliza RegistroProfissionalViewModel porque o formulário
+    reúne dados de autenticação do ASP.NET Core Identity, dados profissionais,
+    dados de contrato, cidade e plano.
+
+    A mesma View é reutilizada para Médico e Nutricionista.
+    O tipo profissional vem definido pelo Controller, evitando que o usuário
+    escolha manualmente um tipo indevido pela interface.
+*@
+
+<h1>@ViewData["Title"]</h1>
+
+<p class="text-muted">
+    Preencha os dados abaixo para criar seu acesso e seu cadastro profissional como
+    <strong>@Model.TipoProfissionalNome</strong>.
+</p>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Registrar" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <input type="hidden" asp-for="IdTipoProfissional" />
+            <input type="hidden" asp-for="TipoProfissionalNome" />
+
+            <h4>Dados de acesso</h4>
+
+            <div class="form-group mb-3">
+                <label asp-for="Email" class="control-label"></label>
+                <input asp-for="Email" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Password" class="control-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="ConfirmPassword" class="control-label"></label>
+                <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+            </div>
+
+            <hr />
+
+            <h4>Dados profissionais</h4>
+
+            <div class="form-group mb-3">
+                <label asp-for="Nome" class="control-label"></label>
+                <input asp-for="Nome" class="form-control" />
+                <span asp-validation-for="Nome" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Cpf" class="control-label"></label>
+                <input asp-for="Cpf" class="form-control" />
+                <span asp-validation-for="Cpf" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="CrmCrn" class="control-label"></label>
+                <input asp-for="CrmCrn" class="form-control" />
+                <span asp-validation-for="CrmCrn" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Especialidade" class="control-label"></label>
+                <input asp-for="Especialidade" class="form-control" />
+                <span asp-validation-for="Especialidade" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="IdPlano" class="control-label"></label>
+                <select asp-for="IdPlano" class="form-control" asp-items="Model.Planos">
+                    <option value="">Selecione um plano</option>
+                </select>
+                <span asp-validation-for="IdPlano" class="text-danger"></span>
+            </div>
+
+            <hr />
+
+            <h4>Endereço</h4>
+
+            <div class="form-group mb-3">
+                <label asp-for="Logradouro" class="control-label"></label>
+                <input asp-for="Logradouro" class="form-control" />
+                <span asp-validation-for="Logradouro" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Numero" class="control-label"></label>
+                <input asp-for="Numero" class="form-control" />
+                <span asp-validation-for="Numero" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Bairro" class="control-label"></label>
+                <input asp-for="Bairro" class="form-control" />
+                <span asp-validation-for="Bairro" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Cep" class="control-label"></label>
+                <input asp-for="Cep" class="form-control" />
+                <span asp-validation-for="Cep" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="IdCidade" class="control-label"></label>
+                <select asp-for="IdCidade" class="form-control" asp-items="Model.Cidades">
+                    <option value="">Selecione uma cidade</option>
+                </select>
+                <span asp-validation-for="IdCidade" class="text-danger"></span>
+            </div>
+
+            <hr />
+
+            <h4>Contato</h4>
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label asp-for="Ddd1" class="control-label"></label>
+                        <input asp-for="Ddd1" class="form-control" />
+                        <span asp-validation-for="Ddd1" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-9">
+                    <div class="form-group mb-3">
+                        <label asp-for="Telefone1" class="control-label"></label>
+                        <input asp-for="Telefone1" class="form-control" />
+                        <span asp-validation-for="Telefone1" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group mb-3">
+                        <label asp-for="Ddd2" class="control-label"></label>
+                        <input asp-for="Ddd2" class="form-control" />
+                        <span asp-validation-for="Ddd2" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-9">
+                    <div class="form-group mb-3">
+                        <label asp-for="Telefone2" class="control-label"></label>
+                        <input asp-for="Telefone2" class="form-control" />
+                        <span asp-validation-for="Telefone2" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group mt-4">
+                <input type="submit" value="Registrar" class="btn btn-primary" />
+                <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
