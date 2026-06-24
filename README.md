@@ -31,7 +31,10 @@ Não foram utilizadas migrations para alterar a estrutura do banco da disciplina
 - `Data/`: contextos do Entity Framework.
 - `Views/`: páginas Razor utilizadas pelos controllers.
 - `Areas/Identity/`: estrutura relacionada ao ASP.NET Core Identity.
+- `ViewModels/`: classes auxiliares usadas para estruturar dados específicos de telas e fluxos de negócio.
 - `wwwroot/js/`: arquivos JavaScript utilizados pela aplicação.
+- `docs/`: documentação complementar do projeto.
+- `docs/sql/`: scripts SQL de preparação, apoio e conferência.
 
 ## Entregas
 
@@ -98,9 +101,49 @@ Ajustes adicionais realizados:
 > Acesso direto à [Controllers/TbPacientesController.cs](Controllers/TbPacientesController.cs).
 > Acesso direto à [wwwroot/js/jquery.validate.pt-br.js](wwwroot/js/jquery.validate.pt-br.js).
 
-### Entrega 03
+### Entrega 03 - Trabalho Final ASP.NET Core MVC
 
-A ser detalhada futuramente.
+Atividade solicitada: evoluir o projeto para contemplar regras de autenticação, autorização por perfis, cadastro de profissionais, área gerencial e gestão de pacientes por profissional.
+
+Resumo da entrega:
+
+- Cadastro do próprio profissional como Médico ou Nutricionista.
+- Uso de ASP.NET Core Identity com Roles específicas.
+- Criação de três perfis gerenciais: Gerente Médico, Gerente Nutricionista e Gerente Geral.
+- Restrição de acesso por perfil usando `[Authorize]` e filtros no controller.
+- Área do profissional para visualização e edição dos próprios dados.
+- Bloqueio de alteração do CPF pelo próprio profissional.
+- Área gerencial para consulta, edição e exclusão de profissionais conforme perfil do gerente.
+- Permissão para gerente alterar CPF de profissional.
+- Bloqueio de exclusão de profissional com paciente vinculado.
+- CRUD funcional de pacientes por profissional, usando vínculo em `tbMedico_Paciente`.
+- Ajustes de navegação por perfil no layout principal.
+- Página de acesso negado customizada em português.
+- Mensagens globais de sucesso e erro centralizadas no layout.
+
+Arquivos principais trabalhados:
+
+- `Program.cs`
+- `Controllers/ProfissionaisController.cs`
+- `ViewModels/`
+- `Views/Profissionais/`
+- `Views/Shared/_Layout.cshtml`
+- `Areas/Identity/Pages/Account/AccessDenied.cshtml`
+- `Areas/Identity/Pages/Account/AccessDenied.cshtml.cs`
+- `docs/`
+- `docs/sql/`
+
+Documentação complementar da entrega:
+
+- [Manual de execução](docs/manual_execucao.md)
+- [Requisitos resumidos](docs/requisitos_resumidos.md)
+- [Roteiro de testes funcionais](docs/roteiro_testes.md)
+- [Consultas SQL de apoio aos testes](docs/sql/consultas_apoio_testes_parte_3.sql)
+- [Seed da Parte 3](docs/sql/seed_parte_3.sql)
+- [Seed dos usuários gerenciais](docs/sql/seed_gerentes_parte_3.sql)
+- [Script opcional para remover vínculo de teste](docs/sql/opcional_remover_vinculo_teste_paciente_profissional.sql)
+
+> A Entrega 03 foi documentada de forma separada em `docs/` para facilitar a conferência dos requisitos, a execução do projeto e a validação funcional.
 
 ## Referências
 
@@ -129,6 +172,24 @@ A ser detalhada futuramente.
 ### CRUD básico com ASP.NET Core MVC e EF Core
 
 - [Tutorial: Implementar funcionalidade CRUD básica - ASP.NET MVC com EF Core](https://learn.microsoft.com/aspnet/core/data/ef-mvc/crud?view=aspnetcore-8.0)
+
+### Estratégias de programação utilizadas na Entrega 03
+
+- [Views em ASP.NET Core MVC - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/views/overview)
+- [Layouts em ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/views/layout)
+- [Tag Helpers em ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/views/tag-helpers/intro)
+- [Trabalhar com formulários em ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/views/working-with-forms)
+- [Partial Views em ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/views/partial)
+- [Model Binding em ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/models/model-binding)
+- [Validação de Models em ASP.NET Core MVC - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/models/validation)
+- [ViewModels e Views fortemente tipadas em ASP.NET MVC - Microsoft Learn](https://learn.microsoft.com/aspnet/mvc/overview/older-versions-1/nerddinner/use-viewdata-and-implement-viewmodel-classes)
+- [Autorização baseada em Roles no ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/security/authorization/roles)
+- [Introdução à autorização no ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/security/authorization/introduction)
+- [Injeção de dependência em Controllers ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/mvc/controllers/dependency-injection)
+- [Consultas com LINQ no Entity Framework Core - Microsoft Learn](https://learn.microsoft.com/ef/core/querying/)
+- [Consultas Tracking e No-Tracking no Entity Framework Core - Microsoft Learn](https://learn.microsoft.com/ef/core/querying/tracking)
+- [Operadores de consulta LINQ em C# - Microsoft Learn](https://learn.microsoft.com/dotnet/csharp/linq/standard-query-operators/)
+- [Gerenciamento de estado e TempData no ASP.NET Core - Microsoft Learn](https://learn.microsoft.com/aspnet/core/fundamentals/app-state)
 
 ## Observações
 
