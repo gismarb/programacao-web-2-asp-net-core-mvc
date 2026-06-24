@@ -357,10 +357,6 @@ Depois de executar o projeto, validar:
 6. A conexão com o banco está funcionando.
 ```
 
-Para uma validação completa, usar o documento:
-
-[Roteiro de Testes Funcionais](docs/roteiro_testes.md "roteiro_testes.md")
-
 ---
 
 ## 13. Observações
@@ -369,12 +365,14 @@ Este manual descreve apenas a execução e preparação mínima do projeto.
 
 O mapeamento dos requisitos está em:
 
-[Requisitos Funcionais explícitos e implícitos](docs/requisitos_resumidos.md "requisitos_resumidos.md")
+[Requisitos Funcionais explícitos e implícitos](requisitos_resumidos.md "requisitos_resumidos.md")
 
 O roteiro de validação funcional está em:
 
-[Roteiro de Testes Funcionais](docs/roteiro_testes.md "roteiro_testes.md")
+[Roteiro de Testes Funcionais](roteiro_testes.md "roteiro_testes.md")
 
-Consultas auxiliares ou de apoio estão em:
+Consultas auxiliares ou de apoio estão na pasta `docs/sql`:
 
-[Na pasta `docs/sql` podem ser encontradas mais consultas](docs/sql/ "docs/sql")
+- [Consulta de Apoio para testes](sql/consultas_apoio_testes_parte_3.sql "consultas_apoio_testes_parte_3.sql")
+- [Consulta para criar vínculo entre paciente e profissinonal](sql/opcional_criar_vinculo_teste_paciente_profissional.sql "opcional_criar_vinculo_teste_paciente_profissional.sql")
+- [Consulta para remover vínculo entre paciente e profissinonal](sql/opcional_remover_vinculo_teste_paciente_profissional.sql "opcional_remover_vinculo_teste_paciente_profissional.sql")
